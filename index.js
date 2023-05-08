@@ -12,7 +12,6 @@ const tg = new Telegraf(BOT_TOKEN);
 // Create the tg BOT
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 
-const baseUrl = 'https://moto.av.by';
 let intervalId;
 const time = 60 * 1000;
 let count = 1;
@@ -22,7 +21,8 @@ bot.onText(/\/start/, (msg) => {
     const keyboardBrands = {
         reply_markup: {
             keyboard: [
-                ['Honda', { text: 'CB' }],
+                ['Aprilia', { text: 'RS' }, { text: 'TUAREG' }],
+                ['Honda', { text: 'CB' }, { text: 'TRANSALP' }],
                 ['Yamaha', { text: 'XSR' }, { text: 'XV' }],
                 ['BMW', { text: 'R' }, { text: 'S' }, { text: 'K' },
                     { text: 'G' }, { text: 'F' },
@@ -39,7 +39,7 @@ bot.onText(/\/start/, (msg) => {
         'Выберите значение.', keyboardBrands);
 });
 
-bot.onText(/^(Honda|CB|Yamaha|XSR|XV|BMW|[RSKGF]|HD|RK|SG|RG|FB|FTB)$/, (msg) => {
+bot.onText(/^(Aprilia|RS|TUAREG|Honda|CB|TRANSALP|Yamaha|XSR|XV|BMW|[RSKGF]|HD|RK|SG|RG|FB|FTB)$/, (msg) => {
     // Hide the keyboard with brands after selecting a value
     const hideKeyboardBrands = {
         reply_markup: {
@@ -49,10 +49,9 @@ bot.onText(/^(Honda|CB|Yamaha|XSR|XV|BMW|[RSKGF]|HD|RK|SG|RG|FB|FTB)$/, (msg) =>
     const yearKeyboard = {
         reply_markup: {
             keyboard: [
-                [{ text: '2015'}, { text: '2016'}, { text: '2017'}, { text: '2018'}],
-                [{ text: '2019'}, { text: '2020'}, { text: '2021'}, { text: '2022'},
-                    { text: '2023'},
-                ],
+                [{ text: '2010'}, { text: '2011'}, { text: '2012'}, { text: '2013'}, { text: '2014'}],
+                [{ text: '2015'}, { text: '2016'}, { text: '2017'}, { text: '2018'}, { text: '2019'}],
+                [{ text: '2020'}, { text: '2021'}, { text: '2022'}, { text: '2023'}],
             ],
             resize_keyboard: true,
         },
@@ -145,7 +144,11 @@ bot.on('message', async (msg) => {
     }
 
     if (_brand && year && price) {
-        await bot.sendMessage(chatId, `Поищем мот ${_brand.toUpperCase()} ${helpers.findModel(model)} ${year}г. до ${price}$`);
+        const _href = helpers.linkAbout[helpers.findModel(model)];
+        const _name = _href
+            ? `<a href="${_href}">${_brand} ${helpers.findModel(model)}</a>`
+            : `${_brand} ${helpers.findModel(model)}`.toUpperCase();
+        await bot.sendMessage(chatId, `Поищем мот ${_name} ${year}г. до ${price}$`, { parse_mode: 'HTML' });
     }
     if (!price) return;
 
@@ -160,6 +163,8 @@ bot.on('message', async (msg) => {
             if (response.data.length > 0) {
                 const $ = cheerio.load(response.data);
                 // Find UI button by css selector and parse string to looking for a number
+                // mobile.de
+                // const foundAds = $('.u-text-orange').text()?.match(/\d+/);
                 const foundAds = $('.filter__show-result')
                     .find('span').text()?.match(/\d+/);
 
@@ -170,8 +175,8 @@ bot.on('message', async (msg) => {
                 }
 
                 const tgModel = tg.context.data?.model;
-                if (tg.context.data?.ads === foundAds[0] && tgModel === model) {
-                    message = `Число найденных ads - ${foundAds[0]} для мотоцикла ${_brand.toUpperCase()} ${findModel(model)} не изменилось!\n`;
+                if (tg.context.data?.ads === foundAds[0]) {
+                    message = `Число найденных ads - ${foundAds[0]} для мотоцикла ${_brand.toUpperCase()} ${helpers.findModel(model)} не изменилось!\n`;
                     message += `Следующий поиск будет через ${count * time/60000} мин.`
                     count++;
                     await bot.sendMessage(chatId, message);
@@ -179,8 +184,10 @@ bot.on('message', async (msg) => {
                 } else {
                     // Was changed ADS or Model - overwrite data
                     console.log('MODEL or ADS was changed !!!', tgModel, '|', model, '|', tg.context.data?.ads, '|', foundAds[0]);
-                    tg.context.data = { ...tg.context.data, model, ads: foundAds[0] };
+                    tg.context.data = { ...tg.context.data, ads: foundAds[0] };
                 }
+                // mobile.de
+                // let topLink = $('.vehicle-data').attr('href');
                 // find a link to ads in the TOP
                 let topLink = $('.listing__top')
                     .find('.listing-top__title-link').attr('href');
@@ -191,14 +198,14 @@ bot.on('message', async (msg) => {
                 }
 
                 message += `Найдено ${sort ? 'НОВЫХ' : 'акуальных'} объявлений: ${foundAds[0]}\n\n`
-                message += `${baseUrl}${topLink}\n\n`;
+                message += `${helpers.baseUrl}${topLink}\n\n`;
                 message += `Грид: ${link}\n\n`;
             }
 
             await bot.sendMessage(chatId, message);
 
         } catch (error) {
-            count = 3;
+            count += 1;
             let err = 'Что-то пошло не так...\n';
             err += `Следующий поиск будет через ${count * time/60000} мин.\n\nЕсли хотите прервать поиск введите слово "off"`;
             await bot.sendMessage(chatId, err);
