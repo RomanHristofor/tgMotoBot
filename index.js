@@ -13,7 +13,7 @@ const tg = new Telegraf(BOT_TOKEN);
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 
 let intervalId;
-const time = 60 * 1000;
+const time = 60/2 * 1000;
 let count = 1;
 
 
@@ -158,8 +158,11 @@ bot.on('message', async (msg) => {
     async function callApi() {
         try {
             // Processing response from API
-            const response = await axios.get(link);
-
+            const response = await axios.get(link, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
+                },
+            });
             if (response.data.length > 0) {
                 const $ = cheerio.load(response.data);
                 // Find UI button by css selector and parse string to looking for a number
